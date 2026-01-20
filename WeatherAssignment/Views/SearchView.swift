@@ -62,9 +62,9 @@ struct SearchView: View {
         .padding()
     }
 }
-#Preview {
-    let networkManager = NetworkManager()
-    let service = WeatherService(networkManager: networkManager)
-    let viewModel = WeatherViewModel(service: service, storage: .standard)
-    SearchView(viewModel: viewModel)
-}
+//#Preview {
+//    let networkManager = NetworkManager()
+//    let service = WeatherService(networkManager: networkManager)
+//    let viewModel = WeatherViewModel(service: service, storage: .standard)
+//    SearchView(viewModel: viewModel)
+//}

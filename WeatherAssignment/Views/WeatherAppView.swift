@@ -9,13 +9,19 @@ import SwiftUI
 
 struct WeatherAppView: View {
     @StateObject private var viewModel: WeatherViewModel
-
+    
     init(storage: UserDefaults = .standard) {
         let service = WeatherService(networkManager: NetworkManager())
+        let locationService = LocationService() // 👈 Add this
         _viewModel = StateObject(
-            wrappedValue: WeatherViewModel(service: service, storage: storage))
+            wrappedValue: WeatherViewModel(
+                service: service,
+                storage: storage,
+                locationService: locationService // 👈 Pass it
+            )
+        )
     }
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -32,9 +38,9 @@ struct WeatherAppView: View {
             }
         }
         .task {
-            await viewModel.loadLastCity()
+            // ⚠️ Consider changing this to use location-based flow
+            viewModel.requestLocationPermissionAndLoad()
         }
-        .accessibilityElement(children: .contain)
         .accessibilityLabel("Weather application")
     }
 }
