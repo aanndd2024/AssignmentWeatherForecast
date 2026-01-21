@@ -55,14 +55,16 @@ final class WeatherViewModel: ObservableObject {
             AppLogger.shared.location.info("Weather Information: \(String(describing: self.weatherResponse))")
         } catch {
             errorMessage = error.localizedDescription
-            AppLogger.shared.location.error("Error1:\(String(describing: self.errorMessage))")
+            AppLogger.shared.location.error("loadWeatherByLocation() Error:\(String(describing: self.errorMessage))")
             await loadLastCity()
         }
         isLoading = false
     }
     
     func loadLastCity() async {
-        guard let savedCity = storage.string(forKey: "lastCity") else { return }
+        guard let savedCity = storage.string(forKey: "lastCity") else {
+            return
+        }
         city = savedCity
         await fetchWeatherData()
     }
@@ -88,7 +90,6 @@ final class WeatherViewModel: ObservableObject {
             self.weatherResponse = nil
             self.errorMessage = WeatherError.invalidWeatherData.errorDescription
         }
-        
         self.isLoading = false
     }
     
@@ -97,7 +98,7 @@ final class WeatherViewModel: ObservableObject {
             let image = try await service.loadWeatherIcon(iconCode: iconCode)
             return image
         } catch {
-            AppLogger.shared.location.error("Error3:\(String(describing: error))")
+            AppLogger.shared.location.error("loadWeatherIcon() Error:\(String(describing: error))")
             return nil
         }
     }
