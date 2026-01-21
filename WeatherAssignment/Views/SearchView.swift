@@ -9,15 +9,14 @@ import SwiftUI
 
 struct SearchView: View {
     @ObservedObject var viewModel: WeatherViewModel
-    @State private var isEditing = false // Optional: track focus if needed
+    @State private var isEditing = false
 
     var body: some View {
         VStack {
-            SearchTextField(
-                text: $viewModel.city,
-                placeholder: "Enter a US city"
-            ) {
-                Task { await viewModel.fetchWeatherData() }
+            SearchTextField(text: $viewModel.city, placeholder: "Enter a US city") {
+                Task {
+                    await viewModel.fetchWeatherData()
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 40)
@@ -36,6 +35,7 @@ struct SearchView: View {
                 }
             }
             .padding(.top, 8)
+            Spacer()
         }
         .onChange(of: viewModel.city) { _, newValue in
             if !newValue.isEmpty {

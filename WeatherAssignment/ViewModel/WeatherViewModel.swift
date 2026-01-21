@@ -55,6 +55,7 @@ final class WeatherViewModel: ObservableObject {
             AppLogger.shared.location.info("Weather Information: \(String(describing: self.weatherResponse))")
         } catch {
             errorMessage = error.localizedDescription
+            AppLogger.shared.location.error("Error1:\(String(describing: self.errorMessage))")
             await loadLastCity()
         }
         isLoading = false
@@ -68,22 +69,27 @@ final class WeatherViewModel: ObservableObject {
     
     func fetchWeatherData() async {
         guard !city.isEmpty else {
-            errorMessage = "Please enter a city name."
+            self.errorMessage = WeatherError.invalidCityName.errorDescription
+            self.weatherResponse = nil
             return
         }
         
-        isLoading = true
-        errorMessage = nil
+        self.isLoading = true
+        self.errorMessage = nil
         
         do {
-            weatherResponse = try await service.fetchWeather(for: city)
-            //print(weather)
-            storage.set(city, forKey: "lastCity")
+            let response = try await service.fetchWeather(for: city)
+            self.weatherResponse = response
+            self.errorMessage = nil
+        } catch WeatherError.invalidCityName {
+            self.weatherResponse = nil
+            self.errorMessage = WeatherError.invalidCityName.errorDescription
         } catch {
-            errorMessage = error.localizedDescription
+            self.weatherResponse = nil
+            self.errorMessage = WeatherError.invalidWeatherData.errorDescription
         }
         
-        isLoading = false
+        self.isLoading = false
     }
     
     func loadWeatherIcon(iconStr: String) async -> UIImage? {
@@ -91,7 +97,7 @@ final class WeatherViewModel: ObservableObject {
             let image = try await service.loadWeatherIcon(iconCode: iconStr)
             return image
         } catch {
-            print("Failed to load icon:", error)
+            AppLogger.shared.location.error("Error3:\(String(describing: error))")
             return nil
         }
     }
