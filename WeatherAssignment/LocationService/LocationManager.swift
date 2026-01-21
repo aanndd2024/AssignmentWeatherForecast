@@ -6,36 +6,16 @@
 //
 import CoreLocation
 import Foundation
-import os.log
 
-// MARK: - Errors
-
-enum LocationServiceError: Error {
-    case notAuthorized
-    case locationRequestInProgress
-}
-
-// MARK: - Protocol
-
-@MainActor
-protocol LocationServiceProtocol: AnyObject {
-    /// Current authorization status
+protocol LocationServiceProtocol {
     var authorizationStatus: CLAuthorizationStatus { get }
-
-    /// Called whenever authorization changes
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)? { get set }
-
-    /// Requests When-In-Use permission
     func requestLocationPermission()
-
-    /// Returns the current device location
     func getCurrentLocation() async throws -> CLLocationCoordinate2D
 }
 
-// MARK: - Implementation
-
-@MainActor
 final class LocationService: NSObject, LocationServiceProtocol {
+
     private let locationManager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
 
@@ -48,24 +28,21 @@ final class LocationService: NSObject, LocationServiceProtocol {
     override init() {
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
     func requestLocationPermission() {
+        AppLogger.shared.location.info("Requesting location permission: \(self.locationManager.authorizationStatus.rawValue)" )
         locationManager.requestWhenInUseAuthorization()
     }
 
     func getCurrentLocation() async throws -> CLLocationCoordinate2D {
-        let status = authorizationStatus
+        // Check authorization first
+        let status = locationManager.authorizationStatus
         guard status == .authorizedWhenInUse || status == .authorizedAlways else {
-            throw LocationServiceError.notAuthorized
+            throw WeatherError.locationPermissionDenied
         }
-
-        // Prevent concurrent calls to avoid lost continuations
-        guard continuation == nil else {
-            throw LocationServiceError.locationRequestInProgress
-        }
-
+        
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             locationManager.requestLocation()
@@ -73,39 +50,57 @@ final class LocationService: NSObject, LocationServiceProtocol {
     }
 }
 
-// MARK: - CLLocationManagerDelegate
-
 extension LocationService: CLLocationManagerDelegate {
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        AppLogger.shared.location.info("Authorization status changed: \(status.rawValue)" )
+
+        switch status {
+        case .notDetermined:
+            AppLogger.shared.location.info("Not Determined" )
+
+        case .restricted:
+            AppLogger.shared.location.info("Restricted" )
+
+        case .denied:
+            AppLogger.shared.location.info("Denied" )
+
+        case .authorizedAlways:
+            AppLogger.shared.location.info("Authorized Always" )
+
+        case .authorizedWhenInUse:
+            AppLogger.shared.location.info("Authorized When In Use" )
+
+        @unknown default:
+            AppLogger.shared.location.info("Unknown" )
+
+        }
+        
+        onAuthorizationChange?(status)
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else {
-            Task { @MainActor in
-                self.continuation?.resume(throwing: LocationServiceError.notAuthorized)
-                self.continuation = nil
-            }
+            continuation?.resume(throwing: WeatherError.locationError)
+            continuation = nil
             return
         }
-        let coordinate = location.coordinate
-        // Inside the nonisolated method, after getting coordinate:
-        os_log("📍 Received location - Lat: %f, Lng: %f", log: .default, type: .info, coordinate.latitude, coordinate.longitude)
-        
-        Task { @MainActor in
-            self.continuation?.resume(returning: location.coordinate)
-            self.continuation = nil
-        }
+        AppLogger.shared.location.privateInfo("Coordinates: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+
+        continuation?.resume(returning: location.coordinate)
+        continuation = nil
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            self.continuation?.resume(throwing: error)
-            self.continuation = nil
-        }
-    }
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        AppLogger.shared.network.error("Location error: \(error.localizedDescription)")
 
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
-        Task { @MainActor in
-            self.onAuthorizationChange?(status)
-        }
+        continuation?.resume(throwing: error)
+        continuation = nil
     }
 }
+
+
+
+
+

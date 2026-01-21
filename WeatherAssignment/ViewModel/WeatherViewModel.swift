@@ -12,7 +12,7 @@ import CoreLocation
 final class WeatherViewModel: ObservableObject {
     
     @Published var city: String = ""
-    @Published var weather: WeatherResponse?
+    @Published var weatherResponse: WeatherResponse?
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
     
@@ -51,8 +51,8 @@ final class WeatherViewModel: ObservableObject {
         errorMessage = nil
         do {
             let coordinate = try await locationService.getCurrentLocation()
-            weather = try await service.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            print(weather)
+            weatherResponse = try await service.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            AppLogger.shared.location.info("Weather Information: \(String(describing: self.weatherResponse))")
         } catch {
             errorMessage = error.localizedDescription
             await loadLastCity()
@@ -76,8 +76,8 @@ final class WeatherViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            weather = try await service.fetchWeather(for: city)
-            print(weather)
+            weatherResponse = try await service.fetchWeather(for: city)
+            //print(weather)
             storage.set(city, forKey: "lastCity")
         } catch {
             errorMessage = error.localizedDescription

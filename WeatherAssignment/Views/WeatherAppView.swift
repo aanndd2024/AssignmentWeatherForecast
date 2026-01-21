@@ -12,12 +12,12 @@ struct WeatherAppView: View {
     
     init(storage: UserDefaults = .standard) {
         let service = WeatherService(networkManager: NetworkManager())
-        let locationService = LocationService() // 👈 Add this
+        let locationService = LocationService()
         _viewModel = StateObject(
             wrappedValue: WeatherViewModel(
                 service: service,
                 storage: storage,
-                locationService: locationService // 👈 Pass it
+                locationService: locationService
             )
         )
     }
@@ -38,7 +38,6 @@ struct WeatherAppView: View {
             }
         }
         .task {
-            // ⚠️ Consider changing this to use location-based flow
             viewModel.requestLocationPermissionAndLoad()
         }
         .accessibilityLabel("Weather application")

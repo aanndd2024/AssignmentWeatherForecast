@@ -12,7 +12,8 @@ enum WeatherError: Error, LocalizedError {
     case noData
     case decodingError
     case invalidImageData
-    case invalidLocationStatus
+    case locationError
+    case locationPermissionDenied
     case httpStatus(Int)
     
     var errorDescription: String? {
@@ -22,7 +23,8 @@ enum WeatherError: Error, LocalizedError {
         case .noData: return "No data received"
         case .decodingError: return "Failed to decode response"
         case .invalidImageData: return "Invalid image data"
-        case .invalidLocationStatus: return "invalidLocationStatus"
+        case .locationError: return "Failed to get location"
+        case .locationPermissionDenied: return "Location permission denied"
         case .httpStatus(let code): return "Server error (\(code))"
         }
     }
