@@ -59,4 +59,9 @@ class ImageCache {
             }
         }
     }
+    
+    // ✅ Simple and Fine for: Small images
+ //    private func decodeImage(from data: Data) -> UIImage? {
+ //        UIImage(data: data, scale: UIScreen.main.scale)
+ //    }
 }
