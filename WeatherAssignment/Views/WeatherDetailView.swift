@@ -75,7 +75,7 @@ struct WeatherDetailView: View {
         }
         // Async icon loading
         .task(id: weather) {
-            weatherIcon = await viewModel.loadWeatherIcon(iconStr: weather.weather.first?.icon ?? "")
+            weatherIcon = await viewModel.loadWeatherIcon(iconCode: weather.weather.first?.icon ?? "")
         }
     }
 }

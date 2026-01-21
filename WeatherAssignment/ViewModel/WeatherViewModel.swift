@@ -92,9 +92,9 @@ final class WeatherViewModel: ObservableObject {
         self.isLoading = false
     }
     
-    func loadWeatherIcon(iconStr: String) async -> UIImage? {
+    func loadWeatherIcon(iconCode: String) async -> UIImage? {
         do {
-            let image = try await service.loadWeatherIcon(iconCode: iconStr)
+            let image = try await service.loadWeatherIcon(iconCode: iconCode)
             return image
         } catch {
             AppLogger.shared.location.error("Error3:\(String(describing: error))")

@@ -38,17 +38,19 @@ struct WeatherService: WeatherServiceProtocol {
 
 extension WeatherServiceProtocol {
     func loadWeatherIcon(iconCode: String) async throws -> UIImage {
-        guard let url = URL(
-            string: "https://openweathermap.org/img/wn/\(iconCode)@2x.png"
-        ) else {
+        guard !iconCode.isEmpty else {
             throw WeatherError.invalidURL
         }
 
-        let (data, _) = try await URLSession.shared.data(from: url)
+        guard let url = URL(string: "https://openweathermap.org/img/wn/\(iconCode)@2x.png") else {
+            throw WeatherError.invalidURL
+        }
 
-        guard let image = UIImage(data: data) else {
+        do {
+            return try await ImageCache.shared.loadImage(from: url)
+        } catch {
+            AppLogger.shared.network.error("Failed to load icon '\(iconCode)': \(error.localizedDescription)")
             throw WeatherError.invalidImageData
         }
-        return image
     }
 }
