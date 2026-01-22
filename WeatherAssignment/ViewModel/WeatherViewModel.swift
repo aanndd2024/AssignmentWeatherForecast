@@ -49,17 +49,29 @@ final class WeatherViewModel: ObservableObject {
     private func loadWeatherByLocation() async {
         isLoading = true
         errorMessage = nil
+        
         do {
             let coordinate = try await locationService.getCurrentLocation()
-            weatherResponse = try await service.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            AppLogger.shared.location.info("Weather Information: \(String(describing: self.weatherResponse))")
+            // Use Result-based fetchWeather
+            let weatherResult = await service.fetchWeather(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            switch weatherResult {
+            case .success(let weather):
+                weatherResponse = weather
+                AppLogger.shared.location.info("Weather Information: \(String(describing: self.weatherResponse))")
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+                AppLogger.shared.location.error("Weather fetch failed: Error:\(String(describing: self.errorMessage))")
+                await loadLastCity()
+            }
         } catch {
             errorMessage = error.localizedDescription
-            AppLogger.shared.location.error("loadWeatherByLocation() Error:\(String(describing: self.errorMessage))")
+            AppLogger.shared.location.error("Location fetch failed: Error:\(String(describing: self.errorMessage))")
             await loadLastCity()
         }
+        
         isLoading = false
     }
+    
     
     func loadLastCity() async {
         guard let savedCity = storage.string(forKey: "lastCity") else {
@@ -70,6 +82,7 @@ final class WeatherViewModel: ObservableObject {
     }
     
     func fetchWeatherData() async {
+        // 1. Validate city
         guard !city.isEmpty else {
             self.errorMessage = WeatherError.invalidCityName.errorDescription
             self.weatherResponse = nil
@@ -79,25 +92,34 @@ final class WeatherViewModel: ObservableObject {
         self.isLoading = true
         self.errorMessage = nil
         
-        do {
-            let response = try await service.fetchWeather(for: city)
+        // 2. Call Result-based service
+        let result = await service.fetchWeather(for: city)
+        
+        switch result {
+        case .success(let response):
             self.weatherResponse = response
             self.errorMessage = nil
-        } catch WeatherError.invalidCityName {
+        case .failure(let error):
             self.weatherResponse = nil
-            self.errorMessage = WeatherError.invalidCityName.errorDescription
-        } catch {
-            self.weatherResponse = nil
-            self.errorMessage = WeatherError.invalidWeatherData.errorDescription
+            switch error {
+            case .invalidCityName:
+                self.errorMessage = WeatherError.invalidCityName.errorDescription
+                AppLogger.shared.location.error("Location fetch failed: Error:\(String(describing: self.errorMessage))")
+            default:
+                self.errorMessage = WeatherError.invalidWeatherData.errorDescription
+                AppLogger.shared.location.error("Location fetch failed: Error:\(String(describing: self.errorMessage))")
+            }
         }
+        
         self.isLoading = false
     }
     
     func loadWeatherIcon(iconCode: String) async -> UIImage? {
-        do {
-            let image = try await service.loadWeatherIcon(iconCode: iconCode)
+        let result = await service.loadWeatherIcon(iconCode: iconCode)
+        switch result {
+        case .success(let image):
             return image
-        } catch {
+        case .failure(let error):
             AppLogger.shared.location.error("loadWeatherIcon() Error:\(String(describing: error))")
             return nil
         }
