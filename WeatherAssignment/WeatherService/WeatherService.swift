@@ -8,9 +8,9 @@ import Foundation
 import UIKit
 
 protocol WeatherServiceProtocol {
-    func fetchWeather(for city: String) async -> Result<WeatherResponse, WeatherError>
-    func fetchWeather(latitude: Double, longitude: Double) async -> Result<WeatherResponse, WeatherError>
-    func loadWeatherIcon(iconCode: String) async -> Result<UIImage, WeatherError>
+    func fetchWeather(for city: String) async throws -> WeatherResponse
+    func fetchWeather(latitude: Double, longitude: Double) async throws -> WeatherResponse
+    func loadWeatherIcon(iconCode: String) async throws -> UIImage
 }
 
 struct WeatherService: WeatherServiceProtocol {
@@ -21,28 +21,14 @@ struct WeatherService: WeatherServiceProtocol {
         self.networkManager = networkManager
     }
     
-    func fetchWeather(for city: String) async -> Result<WeatherResponse, WeatherError> {
+    func fetchWeather(for city: String) async throws -> WeatherResponse {
         let url = makeURL(query: "q=\(city)")
-        do {
-            let weather: WeatherResponse = try await networkManager.fetch(url)
-            return .success(weather)
-        } catch let error as WeatherError {
-            return .failure(error)
-        } catch {
-            return .failure(.invalidResponse)
-        }
+        return try await networkManager.fetch(url)
     }
     
-    func fetchWeather(latitude: Double, longitude: Double) async -> Result<WeatherResponse, WeatherError> {
+    func fetchWeather(latitude: Double, longitude: Double) async throws -> WeatherResponse {
         let url = makeURL(query: "lat=\(latitude)&lon=\(longitude)")
-        do {
-            let weather: WeatherResponse = try await networkManager.fetch(url)
-            return .success(weather)
-        } catch let error as WeatherError {
-            return .failure(error)
-        } catch {
-            return .failure(.invalidResponse)
-        }
+        return try await networkManager.fetch(url)
     }
     
     private func makeURL(query: String) -> URL {
@@ -51,23 +37,20 @@ struct WeatherService: WeatherServiceProtocol {
 }
 
 extension WeatherServiceProtocol {
-    func loadWeatherIcon(iconCode: String) async -> Result<UIImage, WeatherError> {
-        // 1. Validate icon code
+    func loadWeatherIcon(iconCode: String) async throws -> UIImage {
         guard !iconCode.isEmpty else {
-            return .failure(.invalidURL)
+            throw WeatherError.invalidURL
         }
-        // 2. Construct the URL
+
         guard let url = URL(string: "https://openweathermap.org/img/wn/\(iconCode)@2x.png") else {
-            return .failure(.invalidURL)
+            throw WeatherError.invalidURL
         }
-        // 3. Try to load the image asynchronously
+
         do {
-            let image = try await ImageCache.shared.loadImage(from: url)
-            return .success(image)
+            return try await ImageCache.shared.loadImage(from: url)
         } catch {
-            // 4. Log and return failure
             AppLogger.shared.network.error("Failed to load icon '\(iconCode)': \(error.localizedDescription)")
-            return .failure(.invalidImageData)
+            throw WeatherError.invalidImageData
         }
     }
 }
